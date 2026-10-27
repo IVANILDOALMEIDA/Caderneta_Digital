@@ -1,4 +1,4 @@
-# Caderneta Digital v6.4 — Como usar
+# Caderneta Digital — Como usar
 
 Caderneta digital escolar: alunos e encarregados, ocorrências, presenças, notas, pautas e boletins.
 Funciona num PC (o "servidor") e pode ser aberta por outros aparelhos da mesma rede.
