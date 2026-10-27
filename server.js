@@ -80,5 +80,5 @@ http.createServer(async(req,res)=>{
     err(404,'Rota não encontrada.');
   }catch(e){console.error(e);err(500,'Erro no servidor.')}
 }).listen(PORT,'0.0.0.0',()=>{
-  console.log(`\nCaderneta v3 a funcionar!\n  Neste PC:      http://localhost:${PORT}`);
+  console.log(`\nCaderneta v4 a funcionar!\n  Neste PC:      http://localhost:${PORT}`);
   for(const l of Object.values(os.networkInterfaces()))for(const i of l)if(i.family==='IPv4'&&!i.internal)console.log(`  Outros aparelhos (mesma rede): http://${i.address}:${PORT}`)});

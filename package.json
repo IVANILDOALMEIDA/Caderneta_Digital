@@ -1,1 +1,1 @@
-{"name":"caderneta","version":"3.0.0","description":"Caderneta digital escolar","main":"server.js","scripts":{"start":"node server.js"}}
+{"name":"caderneta","version":"4.0.0","description":"Caderneta digital escolar","main":"server.js","scripts":{"start":"node server.js"}}

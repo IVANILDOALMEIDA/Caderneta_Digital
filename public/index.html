@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Caderneta v3</title>
+<title>Caderneta v4</title>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#eef1f6;--paper:#fff;--ink:#1b2a4a;--mute:#5d6b86;--line:#d5dbe8;--red:#c8372d;--blue:#2c4a9a;--ok:#2e7d4f;--warn:#b7791f;
@@ -53,6 +53,24 @@ dialog::backdrop{background:rgba(10,15,30,.55)}
 .toast.on{opacity:1}
 @media (max-width:520px){.sheet{padding:16px 14px 16px 44px}.sheet::before{left:28px}}
 .av{border-radius:50%;object-fit:cover;background:var(--line);display:inline-flex;align-items:center;justify-content:center;font-family:"Bricolage Grotesque",sans-serif;font-weight:700;color:var(--blue);flex:none}
+.only-print{display:none}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0}
+.card{border:1px solid var(--line);border-radius:6px;padding:10px 12px;background:var(--paper);color:var(--mute)}
+.card b{display:block;font:700 1.8rem "Bricolage Grotesque",sans-serif;color:var(--ink)}
+.brow{display:grid;grid-template-columns:minmax(80px,140px) 1fr 36px;gap:8px;align-items:center;margin:5px 0}
+.bl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bt{background:var(--line);height:14px;border-radius:3px;overflow:hidden;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+.bt i{display:block;height:100%;background:var(--blue);print-color-adjust:exact;-webkit-print-color-adjust:exact}
+@media print{
+:root:root:root{--ink:#000;--mute:#333;--line:#bbb;--paper:#fff;--bg:#fff;--blue:#222;--red:#000;color-scheme:light}
+body{background:#fff;color:#000;font-size:12pt}
+header.top,.bar,button,.toast,.noprint,dialog{display:none!important}
+.only-print{display:block!important}
+.wrap{max-width:none;padding:0}
+.sheet,.plain{background:#fff!important;background-image:none!important;border:0;padding:0;margin-top:14px;break-inside:avoid-page}
+.sheet::before{display:none}
+.occ,.brow,.card{break-inside:avoid}
+}
 </style>
 </head>
 <body>
@@ -114,8 +132,8 @@ function render(){
     app.innerHTML=`
     <div class="bar"><button class="ghost" onclick="go('list')">← Voltar à lista</button></div>
     <div class="sheet">
-      <div class="row"><div style="display:flex;gap:16px;align-items:center">${avatar(a,84)}<div><h2>${esc(a.nome)}</h2><div class="sub">${esc(a.classe||"")} ${esc(a.turma||"")} ${a.turno?"· "+esc(a.turno):""} · Ano letivo ${esc(a.anoLetivo||"—")}</div></div></div>
-      <div style="display:flex;gap:8px"><button onclick="abrirAluno('${a.id}')">Editar</button>${isAdmin()?`<button class="danger" onclick="apagarAluno('${a.id}')">Eliminar</button>`:""}</div></div>
+      <div class="only-print" style="margin-bottom:10px"><b>Caderneta · Ficha do aluno</b> — impresso em ${new Date().toLocaleDateString("pt-PT")}</div><div class="row"><div style="display:flex;gap:16px;align-items:center">${avatar(a,84)}<div><h2>${esc(a.nome)}</h2><div class="sub">${esc(a.classe||"")} ${esc(a.turma||"")} ${a.turno?"· "+esc(a.turno):""} · Ano letivo ${esc(a.anoLetivo||"—")}</div></div></div>
+      <div style="display:flex;gap:8px"><button onclick="window.print()">Imprimir ficha</button><button onclick="abrirAluno('${a.id}')">Editar</button>${isAdmin()?`<button class="danger" onclick="apagarAluno('${a.id}')">Eliminar</button>`:""}</div></div>
       <h3 style="margin:20px 0 8px">Dados do aluno</h3>
       <dl>
         <dt>Nº de processo</dt><dd>${esc(a.processo||"—")}</dd>
@@ -129,8 +147,8 @@ function render(){
       <dl>
         <dt>Nome</dt><dd>${esc(a.encNome||"—")}</dd>
         <dt>Parentesco</dt><dd>${esc(a.encParentesco||"—")}</dd>
-        <dt>Telefone</dt><dd>${a.encTel?`<a href="tel:${esc(a.encTel)}">${esc(a.encTel)}</a>`:"—"}</dd>
-        <dt>Telefone alternativo</dt><dd>${esc(a.encTel2||"—")}</dd>
+        <dt>Telefone</dt><dd>${a.encTel?`<a href="tel:${esc(a.encTel)}">${esc(a.encTel)}</a>${waLink(a.encTel,a.nome)}`:"—"}</dd>
+        <dt>Telefone alternativo</dt><dd>${esc(a.encTel2||"—")}${waLink(a.encTel2,a.nome)}</dd>
         <dt>Email</dt><dd>${esc(a.encEmail||"—")}</dd>
         <dt>Profissão</dt><dd>${esc(a.encProf||"—")}</dd>
       </dl>
@@ -215,10 +233,10 @@ async function api(m,u,b){
   if(!r.ok)throw new Error(j.erro||"Erro de ligação");
   return j}
 async function refresh(){db=await api("GET","data")}
-const _render=render;render=()=>!me?showLogin():view==="occ"?renderOccs():_render();
+const _render=render;render=()=>!me?showLogin():view==="occ"?renderOccs():view==="rel"?renderRel():_render();
 
 function acts(){$("acts").innerHTML=me?`<span class="sub" style="align-self:center">${esc(me.nome)} · ${isAdmin()?"administrador":"professor"}</span>
-  ${isAdmin()?`<button onclick="abrirUsers()">Utilizadores</button>`:""}<button onclick="go('occ')">Ocorrências</button><button onclick="abrirPass()">Palavra-passe</button><button onclick="exportar()">Exportar</button>
+  ${isAdmin()?`<button onclick="abrirUsers()">Utilizadores</button>`:""}<button onclick="go('rel')">Relatórios</button><button onclick="go('occ')">Ocorrências</button><button onclick="abrirPass()">Palavra-passe</button><button onclick="exportar()">Exportar</button>
   ${isAdmin()?`<button onclick="document.getElementById('imp').click()">Importar</button>`:""}<button onclick="sair()">Sair</button>`:""}
 function showLogin(){
   acts();
@@ -318,6 +336,43 @@ async function guardarAluno(id){
   try{const r=id?await api("PUT","alunos/"+id,d):await api("POST","alunos",d);
     if(fotoPend)await api("POST","foto/"+r.id,{img:fotoPend});else if(fotoRem&&id)await api("DELETE","foto/"+id);
     await refresh();$("dlgAluno").close();toast("Aluno guardado");id?render():go("detail",r.id)}catch(e){toast(e.message)}}
+
+/* ===== v4: relatórios, impressão e WhatsApp ===== */
+const DDI="244"; // indicativo do país (Angola)
+function wa(num,nome){let d=String(num).replace(/\D/g,"");if(d.startsWith("00"))d=d.slice(2);if(d.length===9)d=DDI+d;
+  return "https://wa.me/"+d+"?text="+encodeURIComponent(`Bom dia. Falo da escola sobre o(a) aluno(a) ${nome}.`)}
+const waLink=(num,nome)=>num?` · <a class="noprint" href="${wa(num,nome)}" target="_blank" rel="noopener">WhatsApp</a>`:"";
+const periodo=()=>db.ocorrencias.filter(o=>(!OF.de||o.data>=OF.de)&&(!OF.ate||o.data<=OF.ate));
+const alunoDe=id=>db.alunos.find(a=>a.id===id);
+function contar(arr,f){const m={};arr.forEach(x=>{const k=f(x)||"Sem turma";m[k]=(m[k]||0)+1});return Object.entries(m)}
+function barras(ent,ordenar=true){
+  if(ordenar)ent.sort((a,b)=>b[1]-a[1]);
+  const mx=Math.max(1,...ent.map(e=>e[1]));
+  return ent.length?ent.map(([k,v])=>`<div class="brow"><span class="bl">${esc(k)}</span><span class="bt"><i style="width:${v/mx*100}%"></i></span><b>${v}</b></div>`).join(""):`<div class="sub">Sem dados neste período.</div>`}
+function renderRel(){
+  const O=periodo(),pt=(OF.de||OF.ate)?`${OF.de?fdate(OF.de):"início"} a ${OF.ate?fdate(OF.ate):"hoje"}`:"Todo o período";
+  const porAluno=contar(O,o=>o.alunoId).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const meses=contar(O,o=>o.data.slice(0,7)).sort((a,b)=>a[0].localeCompare(b[0])).map(([k,v])=>[k.slice(5)+"/"+k.slice(0,4),v]);
+  $("app").innerHTML=`<div class="bar"><button class="ghost" onclick="go('list')">← Voltar à lista</button></div>
+  <div class="plain"><div class="only-print"><b>Caderneta · Relatório de ocorrências</b> — impresso em ${new Date().toLocaleDateString("pt-PT")}</div>
+  <div class="row"><h2>Relatórios</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button onclick="window.print()">Imprimir relatório</button><button onclick="exportarCSV()">Exportar CSV</button></div></div>
+  <div class="bar" style="margin-top:12px;align-items:flex-end"><label style="margin:0;flex:1 1 140px">De<input type="date" value="${OF.de}" onchange="setOF('de',this.value)"></label>
+  <label style="margin:0;flex:1 1 140px">Até<input type="date" value="${OF.ate}" onchange="setOF('ate',this.value)"></label><button onclick="limparOF()">Todo o período</button></div>
+  <div class="sub">Período: ${pt}</div>
+  <div class="cards"><div class="card"><b>${db.alunos.length}</b>alunos</div><div class="card"><b>${O.length}</b>ocorrências</div>
+  <div class="card"><b>${O.filter(o=>o.gravidade==="Grave").length}</b>graves</div><div class="card"><b>${O.filter(o=>o.tipo==="Elogio"||o.gravidade==="Elogio").length}</b>elogios</div></div>
+  <h3>Por tipo</h3>${barras(contar(O,o=>o.tipo))}
+  <h3 style="margin-top:18px">Por gravidade</h3>${barras(contar(O,o=>o.gravidade))}
+  <h3 style="margin-top:18px">Por turma</h3>${barras(contar(O,o=>(alunoDe(o.alunoId)||{}).turma))}
+  <h3 style="margin-top:18px">Por mês</h3>${barras(meses,false)}
+  <h3 style="margin-top:18px">Alunos com mais ocorrências</h3>
+  ${porAluno.length?porAluno.map(([id,n])=>{const a=alunoDe(id)||{nome:"(aluno eliminado)"};return `<div class="occ row"><span>${esc(a.nome)} <span class="sub">${esc(a.turma||"")}</span></span><span><b>${n}</b> <button class="ghost noprint" onclick="go('detail','${id}')">Ver ficha</button></span></div>`}).join(""):`<div class="sub">Sem dados neste período.</div>`}
+  </div>`}
+function exportarCSV(){
+  const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;
+  const L=[["Aluno","Turma","Data","Tipo","Gravidade","Descrição","Medida tomada"].map(q).join(";")];
+  periodo().sort((x,y)=>y.data.localeCompare(x.data)).forEach(o=>{const a=alunoDe(o.alunoId)||{};L.push([a.nome,a.turma,fdate(o.data),o.tipo,o.gravidade,o.descricao,o.medida].map(q).join(";"))});
+  const l=document.createElement("a");l.href=URL.createObjectURL(new Blob(["\ufeff"+L.join("\r\n")],{type:"text/csv;charset=utf-8"}));l.download="ocorrencias.csv";l.click()}
 
 (async()=>{try{me=await api("GET","me");await start()}catch(e){showLogin()}})();
 
