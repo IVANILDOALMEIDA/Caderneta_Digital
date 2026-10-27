@@ -12,7 +12,7 @@ Funciona num PC (o "servidor") e pode ser aberta por outros aparelhos da mesma r
 2. **Extraia o zip** numa pasta fixa, por exemplo `C:\Projetos\Caderneta\v6.4\`.
 3. **Dê dois cliques em `start.bat`.** Abre uma janela preta que mostra algo como:
    ```
-   Caderneta Digital v6.4 a funcionar!
+   Caderneta Digital a funcionar!
      Neste PC:      http://localhost:3000
      Outros aparelhos (mesma rede): http://192.168.1.25:3000
    ```
@@ -103,20 +103,9 @@ Tudo fica na pasta **`data/`** do PC:
 
 ---
 
-## 5. Se publicar o projeto num repositório (GitHub, etc.)
-- **Nunca envie a pasta `data/` nem `backups/`**: contêm dados reais de alunos (menores), palavras-passe (em hash) e sessões. O ficheiro `.gitignore` incluído já os exclui. **Confirme que a exclusão funciona antes do primeiro envio.**
-- O repositório deve ter só o **código**. Use dados de teste (inventados) para demonstrações.
-- Se alguma vez enviou dados reais por engano, apagá-los num novo commit **não chega**: ficam no histórico. Remova-os do histórico, e troque as palavras-passe.
-
-## 6. Limitações a conhecer
-- A ligação é **HTTP** (sem cadeado): use só em rede de confiança, como a da escola ou de casa. Não exponha o servidor à internet aberta.
-- **Não funciona fora da rede** do PC e **não funciona offline**.
-- A lista de alunos não tem paginação (funciona bem para algumas centenas).
-- As cópias automáticas não incluem fotos nem anexos.
-
-## 7. Ficheiros do projeto
+## 5. Ficheiros do projeto
 ```
-Caderneta-v6.4/
+Caderneta_Digital/
 ├── server.js            servidor (API, login, dados)
 ├── start.bat            inicia o servidor no Windows
 ├── instalar-arranque.bat / remover-arranque.bat
