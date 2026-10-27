@@ -1,0 +1,29 @@
+
+# Dependências Node.js
+node_modules/
+
+# Variáveis de ambiente e credenciais
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Ficheiros gerados
+dist/
+build/
+coverage/
+
+# Cache
+.npm/
+
+# Editores
+.vscode/
+.idea/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
