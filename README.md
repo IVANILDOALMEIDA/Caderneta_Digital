@@ -1,15 +1,12 @@
 # Caderneta Digital — Como usar
 
 Caderneta digital escolar: alunos e encarregados, ocorrências, presenças, notas, pautas e boletins.
-Funciona num PC (o "servidor") e pode ser aberta por outros aparelhos da mesma rede.
-
 ---
 
 ## 1. Rodar no PC (Windows)
 
 ### Primeira vez
 1. **Instale o Node.js** (versão LTS) em https://nodejs.org. É a única coisa a instalar.
-2. **Extraia o zip** numa pasta fixa, por exemplo `C:\Projetos\Caderneta\v6.4\`.
 3. **Dê dois cliques em `start.bat`.** Abre uma janela preta que mostra algo como:
    ```
    Caderneta Digital a funcionar!
