@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Caderneta v4</title>
+<link rel="manifest" href="/manifest.json"><meta name="theme-color" content="#2c4a9a"><link rel="icon" href="/icon.svg"><title>Caderneta v5</title>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#eef1f6;--paper:#fff;--ink:#1b2a4a;--mute:#5d6b86;--line:#d5dbe8;--red:#c8372d;--blue:#2c4a9a;--ok:#2e7d4f;--warn:#b7791f;
@@ -142,6 +142,7 @@ function render(){
         <dt>Morada</dt><dd>${esc(a.morada||"—")}</dd>
         <dt>Contacto</dt><dd>${esc(a.contacto||"—")}</dd>
         <dt>Observações</dt><dd>${esc(a.obs||"—")}</dd>
+        <dt>Faltas</dt><dd>${resumoFaltas(a.id)}</dd>
       </dl>
       <h3 style="margin:20px 0 8px">Encarregado de educação</h3>
       <dl>
@@ -160,7 +161,7 @@ function render(){
         <div>${canEditOcc(o)?`<button class="ghost" onclick="abrirOcc('${a.id}','${o.id}')">Editar</button><button class="ghost" style="color:var(--red)" onclick="apagarOcc('${o.id}')">Eliminar</button>`:""}</div></div>
         <div>${esc(o.descricao)}</div>
         ${o.medida?`<div class="sub"><b>Medida tomada:</b> ${esc(o.medida)}</div>`:""}
-        ${o.registadoPor?`<div class="sub">Registado por: ${esc(o.registadoPor)}</div>`:""}
+        ${o.registadoPor?`<div class="sub">Registado por: ${esc(o.registadoPor)}</div>`:""}${anexosHtml(o)}
       </div>`).join(""):`<div class="empty">Sem ocorrências registadas para este aluno.</div>`}
     </div>`;
   }
@@ -233,10 +234,10 @@ async function api(m,u,b){
   if(!r.ok)throw new Error(j.erro||"Erro de ligação");
   return j}
 async function refresh(){db=await api("GET","data")}
-const _render=render;render=()=>!me?showLogin():view==="occ"?renderOccs():view==="rel"?renderRel():_render();
+const _render=render;render=()=>!me?showLogin():view==="occ"?renderOccs():view==="rel"?renderRel():view==="pres"?renderPres():(_render(),view==="list"&&$("app").insertAdjacentHTML("afterbegin",painel()));
 
 function acts(){$("acts").innerHTML=me?`<span class="sub" style="align-self:center">${esc(me.nome)} · ${isAdmin()?"administrador":"professor"}</span>
-  ${isAdmin()?`<button onclick="abrirUsers()">Utilizadores</button>`:""}<button onclick="go('rel')">Relatórios</button><button onclick="go('occ')">Ocorrências</button><button onclick="abrirPass()">Palavra-passe</button><button onclick="exportar()">Exportar</button>
+  ${isAdmin()?`<button onclick="abrirAdmin()">Administração</button>`:""}<button onclick="go('pres')">Presenças</button><button onclick="go('rel')">Relatórios</button><button onclick="go('occ')">Ocorrências</button><button onclick="abrirPass()">Palavra-passe</button><button onclick="exportar()">Exportar</button>
   ${isAdmin()?`<button onclick="document.getElementById('imp').click()">Importar</button>`:""}<button onclick="sair()">Sair</button>`:""}
 function showLogin(){
   acts();
@@ -266,7 +267,7 @@ $("imp").onchange=e=>{
   const r=new FileReader();r.onload=async()=>{try{const d=JSON.parse(r.result);
     if(!Array.isArray(d.alunos)||!Array.isArray(d.ocorrencias))throw new Error("Ficheiro inválido");
     if(!confirm("Importar vai substituir TODOS os dados atuais. Continuar?"))return;
-    await api("POST","import",{alunos:d.alunos,ocorrencias:d.ocorrencias});await refresh();toast("Dados importados");go("list")}catch(x){toast(x.message||"Ficheiro inválido")}};
+    await api("POST","import",{alunos:d.alunos,ocorrencias:d.ocorrencias,turmas:d.turmas,presencas:d.presencas});await refresh();toast("Dados importados");go("list")}catch(x){toast(x.message||"Ficheiro inválido")}};
   r.readAsText(f);e.target.value=""};
 
 document.body.insertAdjacentHTML("beforeend",'<dialog id="dlgUsers"></dialog><dialog id="dlgPass"></dialog>');
@@ -373,6 +374,68 @@ function exportarCSV(){
   const L=[["Aluno","Turma","Data","Tipo","Gravidade","Descrição","Medida tomada"].map(q).join(";")];
   periodo().sort((x,y)=>y.data.localeCompare(x.data)).forEach(o=>{const a=alunoDe(o.alunoId)||{};L.push([a.nome,a.turma,fdate(o.data),o.tipo,o.gravidade,o.descricao,o.medida].map(q).join(";"))});
   const l=document.createElement("a");l.href=URL.createObjectURL(new Blob(["\ufeff"+L.join("\r\n")],{type:"text/csv;charset=utf-8"}));l.download="ocorrencias.csv";l.click()}
+
+/* ===== v5: administração, turmas, presenças, anexos, painel ===== */
+document.body.insertAdjacentHTML("beforeend",'<dialog id="dlgAdm"></dialog>');
+const admShow=h=>{$("dlgAdm").innerHTML=h;if(!$("dlgAdm").open)$("dlgAdm").showModal()};
+const voltar=`<button type="button" onclick="abrirAdmin()">← Administração</button>`;
+function abrirAdmin(){admShow(`<h2 style="margin-bottom:12px">Administração</h2><div style="display:grid;gap:8px">
+  <button onclick="$('dlgAdm').close();abrirUsers()">Utilizadores</button><button onclick="admTurmas()">Turmas</button>
+  <button onclick="admRec()">Alunos eliminados (reciclagem)</button><button onclick="admLog()">Histórico de alterações</button>
+  <button onclick="$('dlgAdm').close()">Fechar</button></div>`)}
+function admTurmas(){const T=db.turmas||[];admShow(`<h2 style="margin-bottom:12px">Turmas</h2>
+  ${T.length?T.map(t=>`<div class="occ row"><span><b>${esc(t.nome)}</b> <span class="sub">${esc(t.ano||"")} · DT: ${esc(t.diretor||"—")} · ${db.alunos.filter(a=>a.turma===t.nome).length} aluno(s)</span></span>
+  <button class="ghost" style="color:var(--red)" onclick="delTurma('${t.id}')">Eliminar</button></div>`).join(""):`<div class="empty">Ainda não há turmas.</div>`}
+  <form id="fT" onsubmit="return false"><div class="grid">${inp("nome","Turma (ex.: 7ª A)","")}${inp("ano","Ano letivo",new Date().getFullYear())}${inp("diretor","Diretor de turma","")}</div>
+  <div style="display:flex;gap:8px;justify-content:flex-end">${voltar}<button class="primary" type="button" onclick="addTurma()">Criar turma</button></div></form>`)}
+async function addTurma(){try{await api("POST","turmas",Object.fromEntries(new FormData($("fT"))));await refresh();toast("Turma criada");admTurmas()}catch(e){toast(e.message)}}
+async function delTurma(id){if(!confirm("Eliminar esta turma? Os alunos mantêm o nome da turma."))return;try{await api("DELETE","turmas/"+id);await refresh();admTurmas()}catch(e){toast(e.message)}}
+async function admRec(){const L=await api("GET","reciclagem");admShow(`<h2 style="margin-bottom:12px">Alunos eliminados</h2><p class="sub" style="margin-top:0">Ficam aqui 30 dias e depois são apagados definitivamente.</p>
+  ${L.length?L.map(a=>`<div class="occ row"><span><b>${esc(a.nome)}</b> <span class="sub">${esc(a.turma||"")} · eliminado em ${new Date(a.eliminado).toLocaleDateString("pt-PT")}</span></span><button onclick="restaurar('${a.id}')">Restaurar</button></div>`).join(""):`<div class="empty">Nenhum aluno na reciclagem.</div>`}
+  <div style="margin-top:12px">${voltar}</div>`)}
+async function restaurar(id){try{await api("POST","restaurar/"+id);await refresh();toast("Aluno restaurado");admRec()}catch(e){toast(e.message)}}
+async function admLog(){const L=await api("GET","log");admShow(`<h2 style="margin-bottom:12px">Histórico de alterações</h2><div style="max-height:55vh;overflow:auto">
+  ${L.length?L.map(x=>`<div class="occ"><span class="sub">${new Date(x.t).toLocaleString("pt-PT")}</span><br><b>${esc(x.u)}</b> ${esc(x.a)} · ${esc(x.d)}</div>`).join(""):`<div class="empty">Sem registos.</div>`}</div><div style="margin-top:12px">${voltar}</div>`)}
+
+const _aa5=abrirAluno;
+abrirAluno=function(id){_aa5(id);const t=$("fAluno").querySelector("[name=turma]");
+  if(t){t.setAttribute("list","dlT");t.insertAdjacentHTML("afterend",`<datalist id="dlT">${(db.turmas||[]).map(x=>`<option value="${esc(x.nome)}">`).join("")}</datalist>`)}};
+
+let PR={turma:"",data:new Date().toISOString().slice(0,10)};
+function renderPres(){
+  const turmas=[...new Set([...(db.turmas||[]).map(t=>t.nome),...db.alunos.map(a=>a.turma).filter(Boolean)])].sort();
+  const al=PR.turma?db.alunos.filter(a=>a.turma===PR.turma).sort((a,b)=>a.nome.localeCompare(b.nome)):[];
+  const est=id=>((db.presencas||[]).find(p=>p.alunoId===id&&p.data===PR.data)||{estado:"P"}).estado;
+  const op=(a,v,t)=>`<option value="${v}" ${est(a.id)===v?"selected":""}>${t}</option>`;
+  $("app").innerHTML=`<div class="bar"><button class="ghost" onclick="go('list')">← Voltar à lista</button></div><div class="sheet"><h2>Presenças</h2>
+  <div class="bar" style="margin-top:12px"><label style="margin:0;flex:1 1 160px">Turma<select onchange="PR.turma=this.value;render()"><option value="">Escolha a turma</option>${turmas.map(t=>`<option ${t===PR.turma?"selected":""}>${esc(t)}</option>`).join("")}</select></label>
+  <label style="margin:0;flex:1 1 150px">Data<input type="date" value="${PR.data}" onchange="PR.data=this.value;render()"></label></div>
+  ${al.length?`<form id="fPr" onsubmit="return false">${al.map(a=>`<div class="occ row"><span>${esc(a.nome)}</span><select name="${a.id}" style="width:auto">${op(a,"P","Presente")}${op(a,"F","Falta")}${op(a,"J","Falta justificada")}</select></div>`).join("")}
+  <div style="text-align:right;margin-top:12px"><button class="primary" type="button" onclick="guardarPres()">Guardar presenças</button></div></form>`:`<div class="empty">${PR.turma?"Esta turma não tem alunos.":"Escolha uma turma para marcar as presenças."}</div>`}</div>`}
+async function guardarPres(){const m={};new FormData($("fPr")).forEach((v,k)=>{if(v!=="P")m[k]=v});
+  try{await api("POST","presencas/dia",{turma:PR.turma,data:PR.data,marcas:m});await refresh();toast("Presenças guardadas");render()}catch(e){toast(e.message)}}
+function resumoFaltas(id){const P=(db.presencas||[]).filter(p=>p.alunoId===id),f=P.filter(p=>p.estado==="F").length;
+  return P.length?`${f} injustificada(s) · ${P.length-f} justificada(s)`:"Sem faltas registadas"}
+
+const lerArq=f=>new Promise((ok,ko)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=ko;r.readAsDataURL(f)});
+const _ao=abrirOcc;
+abrirOcc=function(alunoId,id){_ao(alunoId,id);$("fOcc").lastElementChild.insertAdjacentHTML("beforebegin",`<label>Anexos (imagens ou PDF, até 5 MB cada)<input type="file" id="fAnx" multiple accept="image/*,application/pdf"></label>`)};
+guardarOcc=async function(alunoId,id){
+  const f=$("fOcc");if(!f.reportValidity())return;const d=Object.fromEntries(new FormData(f));
+  try{const r=id?await api("PUT","ocorrencias/"+id,d):await api("POST","ocorrencias",{...d,alunoId});
+    for(const file of $("fAnx").files)await api("POST","anexo/"+r.id,{nome:file.name,data:await lerArq(file)});
+    await refresh();$("dlgOcc").close();toast("Ocorrência guardada");render()}catch(e){toast(e.message)}};
+const anexosHtml=o=>(o.anexos||[]).map(x=>`<div class="sub">📎 <a href="/api/anexo/${x.id}" target="_blank" rel="noopener">${esc(x.nome)}</a>${canEditOcc(o)?` <button class="ghost noprint" style="min-height:0;padding:0 6px;color:var(--red)" onclick="delAnexo('${x.id}')">remover</button>`:""}</div>`).join("");
+async function delAnexo(id){if(!confirm("Remover este anexo?"))return;try{await api("DELETE","anexo/"+id);await refresh();render()}catch(e){toast(e.message)}}
+
+function painel(){
+  const h=new Date(),hoje=h.toISOString().slice(0,10),d7=new Date(h-7*864e5).toISOString().slice(0,10),d30=new Date(h-30*864e5).toISOString().slice(0,10);
+  const O=db.ocorrencias,rec=[...O].sort((x,y)=>y.data.localeCompare(x.data)).slice(0,5);
+  return `<div class="plain" style="margin-bottom:12px"><div class="cards" style="margin:0 0 10px"><div class="card"><b>${db.alunos.length}</b>alunos</div>
+  <div class="card"><b>${O.filter(o=>o.data>=d7).length}</b>ocorrências (7 dias)</div><div class="card"><b>${O.filter(o=>o.gravidade==="Grave"&&o.data>=d30).length}</b>graves (30 dias)</div>
+  <div class="card"><b>${(db.presencas||[]).filter(p=>p.data===hoje).length}</b>faltas hoje</div></div>
+  ${rec.length?`<div class="sub" style="margin-bottom:4px">Últimas ocorrências</div>`+rec.map(o=>{const a=alunoDe(o.alunoId)||{};return `<div class="row" style="padding:3px 0"><span><span class="tag t-${esc(o.gravidade)}">${esc(o.gravidade)}</span> ${esc(a.nome||"")} <span class="sub">· ${esc(o.tipo)} · ${fdate(o.data)}</span></span><button class="ghost" onclick="go('detail','${a.id}')">Ver</button></span></div>`}).join(""):""}</div>`}
+if("serviceWorker"in navigator)navigator.serviceWorker.register("/sw.js").catch(()=>{});
 
 (async()=>{try{me=await api("GET","me");await start()}catch(e){showLogin()}})();
 
