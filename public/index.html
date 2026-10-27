@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Caderneta v2</title>
+<title>Caderneta v3</title>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#eef1f6;--paper:#fff;--ink:#1b2a4a;--mute:#5d6b86;--line:#d5dbe8;--red:#c8372d;--blue:#2c4a9a;--ok:#2e7d4f;--warn:#b7791f;
@@ -52,6 +52,7 @@ dialog::backdrop{background:rgba(10,15,30,.55)}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:6px;opacity:0;pointer-events:none;transition:opacity .2s}
 .toast.on{opacity:1}
 @media (max-width:520px){.sheet{padding:16px 14px 16px 44px}.sheet::before{left:28px}}
+.av{border-radius:50%;object-fit:cover;background:var(--line);display:inline-flex;align-items:center;justify-content:center;font-family:"Bricolage Grotesque",sans-serif;font-weight:700;color:var(--blue);flex:none}
 </style>
 </head>
 <body>
@@ -100,7 +101,7 @@ function render(){
       <div class="sub" style="margin-bottom:8px">${lista.length} de ${db.alunos.length} aluno(s)</div>
       ${lista.length?lista.map(a=>{const n=db.ocorrencias.filter(o=>o.alunoId===a.id).length;return `
         <div class="stu" onclick="go('detail','${a.id}')" tabindex="0" onkeydown="if(event.key==='Enter')go('detail','${a.id}')">
-          <div><b>${esc(a.nome)}</b><div class="sub">${esc(a.classe||"")} ${esc(a.turma||"")} · Proc. ${esc(a.processo||"—")}</div></div>
+          <div style="display:flex;gap:12px;align-items:center">${avatar(a,44)}<div><b>${esc(a.nome)}</b><div class="sub">${esc(a.classe||"")} ${esc(a.turma||"")} · Proc. ${esc(a.processo||"—")}</div></div></div>
           <span class="tag t-Informativa">${n} ocorrência${n===1?"":"s"}</span>
         </div>`}).join(""):`<div class="empty">${db.alunos.length?"Nenhum aluno encontrado com esse filtro.":"Ainda não há alunos. Toque em “Novo aluno” para registar o primeiro."}</div>`}
     </div>`;
@@ -109,11 +110,11 @@ function render(){
   } else {
     const a=db.alunos.find(x=>x.id===sel);
     if(!a){go("list");return}
-    const occ=db.ocorrencias.filter(o=>o.alunoId===a.id).sort((x,y)=>y.data.localeCompare(x.data));
+    const todas=db.ocorrencias.filter(o=>o.alunoId===a.id);const occ=filtrarOcc(todas);
     app.innerHTML=`
     <div class="bar"><button class="ghost" onclick="go('list')">← Voltar à lista</button></div>
     <div class="sheet">
-      <div class="row"><div><h2>${esc(a.nome)}</h2><div class="sub">${esc(a.classe||"")} ${esc(a.turma||"")} ${a.turno?"· "+esc(a.turno):""} · Ano letivo ${esc(a.anoLetivo||"—")}</div></div>
+      <div class="row"><div style="display:flex;gap:16px;align-items:center">${avatar(a,84)}<div><h2>${esc(a.nome)}</h2><div class="sub">${esc(a.classe||"")} ${esc(a.turma||"")} ${a.turno?"· "+esc(a.turno):""} · Ano letivo ${esc(a.anoLetivo||"—")}</div></div></div>
       <div style="display:flex;gap:8px"><button onclick="abrirAluno('${a.id}')">Editar</button>${isAdmin()?`<button class="danger" onclick="apagarAluno('${a.id}')">Eliminar</button>`:""}</div></div>
       <h3 style="margin:20px 0 8px">Dados do aluno</h3>
       <dl>
@@ -135,7 +136,7 @@ function render(){
       </dl>
     </div>
     <div class="sheet" style="margin-top:16px">
-      <div class="row"><h3>Ocorrências (${occ.length})</h3><button class="primary" onclick="abrirOcc('${a.id}')">Nova ocorrência</button></div>
+      <div class="row"><h3>Ocorrências (${occ.length})</h3><button class="primary" onclick="abrirOcc('${a.id}')">Nova ocorrência</button></div>${todas.length?barraOcc(false):""}
       ${occ.length?occ.map(o=>`<div class="occ">
         <div class="row"><div><span class="tag t-${esc(o.gravidade)}">${esc(o.gravidade)}</span> <b>${esc(o.tipo)}</b> <span class="sub">· ${fdate(o.data)}</span></div>
         <div>${canEditOcc(o)?`<button class="ghost" onclick="abrirOcc('${a.id}','${o.id}')">Editar</button><button class="ghost" style="color:var(--red)" onclick="apagarOcc('${o.id}')">Eliminar</button>`:""}</div></div>
@@ -214,10 +215,10 @@ async function api(m,u,b){
   if(!r.ok)throw new Error(j.erro||"Erro de ligação");
   return j}
 async function refresh(){db=await api("GET","data")}
-const _render=render;render=()=>me?_render():showLogin();
+const _render=render;render=()=>!me?showLogin():view==="occ"?renderOccs():_render();
 
 function acts(){$("acts").innerHTML=me?`<span class="sub" style="align-self:center">${esc(me.nome)} · ${isAdmin()?"administrador":"professor"}</span>
-  ${isAdmin()?`<button onclick="abrirUsers()">Utilizadores</button>`:""}<button onclick="abrirPass()">Palavra-passe</button><button onclick="exportar()">Exportar</button>
+  ${isAdmin()?`<button onclick="abrirUsers()">Utilizadores</button>`:""}<button onclick="go('occ')">Ocorrências</button><button onclick="abrirPass()">Palavra-passe</button><button onclick="exportar()">Exportar</button>
   ${isAdmin()?`<button onclick="document.getElementById('imp').click()">Importar</button>`:""}<button onclick="sair()">Sair</button>`:""}
 function showLogin(){
   acts();
@@ -230,10 +231,6 @@ function showLogin(){
 async function start(){await refresh();acts();view="list";render();if(me.mustChange)abrirPass(true)}
 async function sair(){try{await api("POST","logout",{})}catch(e){}me=null;db={alunos:[],ocorrencias:[]};showLogin()}
 
-async function guardarAluno(id){
-  const f=$("fAluno");if(!f.reportValidity())return;
-  const d=Object.fromEntries(new FormData(f));d.nome=d.nome.trim();
-  try{const r=id?await api("PUT","alunos/"+id,d):await api("POST","alunos",d);await refresh();$("dlgAluno").close();toast("Aluno guardado");id?render():go("detail",r.id)}catch(e){toast(e.message)}}
 async function apagarAluno(id){
   const a=db.alunos.find(x=>x.id===id);
   if(!confirm(`Eliminar ${a.nome} e todas as suas ocorrências? Esta ação não pode ser desfeita.`))return;
@@ -278,6 +275,49 @@ async function abrirUsers(){
 async function addUser(){try{await api("POST","users",Object.fromEntries(new FormData($("fU"))));toast("Utilizador criado");abrirUsers()}catch(e){toast(e.message)}}
 async function resetPass(id){const p=prompt("Nova palavra-passe provisória (mín. 6 caracteres):");if(!p)return;try{await api("PUT","users/"+id,{pass:p});toast("Palavra-passe redefinida")}catch(e){toast(e.message)}}
 async function delUser(id){if(!confirm("Eliminar este utilizador?"))return;try{await api("DELETE","users/"+id);toast("Utilizador eliminado");abrirUsers()}catch(e){toast(e.message)}}
+
+/* ===== v3: fotos e filtros de ocorrências ===== */
+let OF={tipo:"",grav:"",de:"",ate:"",q:""};
+const filtrarOcc=l=>l.filter(o=>(!OF.tipo||o.tipo===OF.tipo)&&(!OF.grav||o.gravidade===OF.grav)&&(!OF.de||o.data>=OF.de)&&(!OF.ate||o.data<=OF.ate)).sort((x,y)=>y.data.localeCompare(x.data));
+const setOF=(k,v)=>{OF[k]=v;render()};
+const limparOF=()=>{OF={tipo:"",grav:"",de:"",ate:"",q:""};render()};
+function barraOcc(global){
+  const op=(arr,v,t)=>`<option value="">${t}</option>`+arr.map(x=>`<option ${x===v?"selected":""}>${x}</option>`).join("");
+  const dt=(k,l)=>`<label style="margin:0;flex:1 1 130px">${l}<input type="date" value="${OF[k]}" onchange="setOF('${k}',this.value)"></label>`;
+  return `<div class="bar" style="margin:12px 0 6px;align-items:flex-end">
+  ${global?`<label style="margin:0;flex:1 1 180px">Aluno<input type="search" placeholder="Nome do aluno" value="${esc(OF.q)}" onchange="setOF('q',this.value)"></label>`:""}
+  <label style="margin:0;flex:1 1 150px">Tipo<select onchange="setOF('tipo',this.value)">${op(TIPOS,OF.tipo,"Todos")}</select></label>
+  <label style="margin:0;flex:1 1 150px">Gravidade<select onchange="setOF('grav',this.value)">${op(GRAV,OF.grav,"Todas")}</select></label>
+  ${dt("de","De")}${dt("ate","Até")}<button onclick="limparOF()">Limpar filtros</button></div>`}
+function renderOccs(){
+  const L=filtrarOcc(db.ocorrencias).map(o=>({o,a:db.alunos.find(x=>x.id===o.alunoId)})).filter(x=>x.a&&(!OF.q||x.a.nome.toLowerCase().includes(OF.q.toLowerCase())));
+  $("app").innerHTML=`<div class="bar"><button class="ghost" onclick="go('list')">← Voltar à lista</button></div>
+  <div class="sheet"><h2>Todas as ocorrências</h2>${barraOcc(true)}<div class="sub">${L.length} ocorrência(s)</div>
+  ${L.length?L.map(({o,a})=>`<div class="occ"><div class="row"><div><span class="tag t-${esc(o.gravidade)}">${esc(o.gravidade)}</span> <b>${esc(o.tipo)}</b> <span class="sub">· ${fdate(o.data)}</span></div>
+  <button class="ghost" onclick="go('detail','${a.id}')">${esc(a.nome)} ${esc(a.turma||"")}</button></div><div>${esc(o.descricao)}</div>
+  ${o.medida?`<div class="sub"><b>Medida tomada:</b> ${esc(o.medida)}</div>`:""}</div>`).join(""):`<div class="empty">Nenhuma ocorrência com estes filtros.</div>`}</div>`}
+
+const avatar=(a,s)=>a.fotoV?`<img class="av" style="width:${s}px;height:${s}px" src="/api/foto/${a.id}?v=${a.fotoV}" alt="">`
+  :`<span class="av" style="width:${s}px;height:${s}px;font-size:${Math.round(s/2.4)}px" aria-hidden="true">${esc((a.nome||"?").trim()[0]||"?").toUpperCase()}</span>`;
+function lerFoto(file){return new Promise((ok,ko)=>{const im=new Image();im.onload=()=>{const k=Math.min(1,360/Math.max(im.width,im.height)),c=document.createElement("canvas");
+  c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext("2d").drawImage(im,0,0,c.width,c.height);ok(c.toDataURL("image/jpeg",.82))};im.onerror=ko;im.src=URL.createObjectURL(file)})}
+let fotoPend=null,fotoRem=false;
+const _abrirAluno=abrirAluno;
+abrirAluno=function(id){
+  fotoPend=null;fotoRem=false;_abrirAluno(id);
+  const a=db.alunos.find(x=>x.id===id)||{};
+  $("fAluno").querySelector("h2").insertAdjacentHTML("afterend",`<div style="display:flex;gap:14px;align-items:center;margin-bottom:12px"><div id="fprev">${avatar(a,72)}</div>
+  <div><input type="file" id="ffile" accept="image/*" aria-label="Foto do aluno" style="margin-bottom:6px">${a.fotoV?`<button type="button" class="ghost" id="frem">Remover foto</button>`:""}</div></div>`);
+  $("ffile").onchange=async e=>{const f=e.target.files[0];if(!f)return;
+    try{fotoPend=await lerFoto(f);fotoRem=false;$("fprev").innerHTML=`<img class="av" style="width:72px;height:72px" src="${fotoPend}" alt="">`}catch(_){toast("Não foi possível ler a imagem")}};
+  if($("frem"))$("frem").onclick=()=>{fotoRem=true;fotoPend=null;$("fprev").innerHTML=avatar({nome:a.nome},72);$("frem").remove()};
+};
+async function guardarAluno(id){
+  const f=$("fAluno");if(!f.reportValidity())return;
+  const d=Object.fromEntries(new FormData(f));d.nome=d.nome.trim();
+  try{const r=id?await api("PUT","alunos/"+id,d):await api("POST","alunos",d);
+    if(fotoPend)await api("POST","foto/"+r.id,{img:fotoPend});else if(fotoRem&&id)await api("DELETE","foto/"+id);
+    await refresh();$("dlgAluno").close();toast("Aluno guardado");id?render():go("detail",r.id)}catch(e){toast(e.message)}}
 
 (async()=>{try{me=await api("GET","me");await start()}catch(e){showLogin()}})();
 

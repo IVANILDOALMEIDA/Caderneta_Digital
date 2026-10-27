@@ -3,6 +3,7 @@ const http=require('http'),fs=require('fs'),path=require('path'),crypto=require(
 const PORT=process.env.PORT||3000,DIR=__dirname,PUB=path.join(DIR,'public'),FILE=path.join(DIR,'data','db.json');
 let db={users:[],alunos:[],ocorrencias:[]};
 fs.mkdirSync(path.dirname(FILE),{recursive:true});
+const FOTOS=path.join(DIR,'data','fotos');fs.mkdirSync(FOTOS,{recursive:true});
 if(fs.existsSync(FILE))db=JSON.parse(fs.readFileSync(FILE,'utf8'));
 const save=()=>{fs.writeFileSync(FILE+'.tmp',JSON.stringify(db,null,1));fs.renameSync(FILE+'.tmp',FILE)};
 const uid=()=>crypto.randomBytes(6).toString('hex');
@@ -42,6 +43,13 @@ http.createServer(async(req,res)=>{
       if(!check(String(b.atual||''),me.pass))return err(400,'A palavra-passe atual está errada.');
       if(String(b.nova||'').length<6)return err(400,'A nova palavra-passe deve ter pelo menos 6 caracteres.');
       me.pass=hash(b.nova);me.mustChange=false;save();return send(res,200,{ok:1})}
+    if(col==='foto'){
+      const f=path.join(FOTOS,String(id).replace(/[^a-z0-9]/g,'')+'.jpg');
+      if(m==='GET'){if(!fs.existsSync(f))return err(404,'Sem foto');res.writeHead(200,{'Content-Type':'image/jpeg','Cache-Control':'private, max-age=86400'});return fs.createReadStream(f).pipe(res)}
+      const a=db.alunos.find(x=>x.id===id);if(!a)return err(404,'Aluno não encontrado.');
+      if(m==='POST'){const mm=/^data:image\/jpeg;base64,([A-Za-z0-9+\/=]+)$/.exec(b.img||'');if(!mm)return err(400,'Imagem inválida.');
+        fs.writeFileSync(f,Buffer.from(mm[1],'base64'));a.fotoV=Date.now();save();return send(res,200,{fotoV:a.fotoV})}
+      if(m==='DELETE'){fs.rmSync(f,{force:true});delete a.fotoV;save();return send(res,200,{ok:1})}}
     if(col==='alunos'||col==='ocorrencias'){
       const L=db[col];
       if(m==='POST'){
@@ -54,7 +62,7 @@ http.createServer(async(req,res)=>{
       if(m==='PUT'){if(!owner)return err(403,'Só pode editar as suas ocorrências.');
         const{autorId,alunoId,criado,...d}=b;Object.assign(r,d,{id:r.id});save();return send(res,200,r)}
       if(m==='DELETE'){
-        if(col==='alunos'){if(!need())return;db.alunos=db.alunos.filter(x=>x.id!==id);db.ocorrencias=db.ocorrencias.filter(o=>o.alunoId!==id)}
+        if(col==='alunos'){if(!need())return;fs.rmSync(path.join(FOTOS,id+'.jpg'),{force:true});db.alunos=db.alunos.filter(x=>x.id!==id);db.ocorrencias=db.ocorrencias.filter(o=>o.alunoId!==id)}
         else{if(!owner)return err(403,'Só pode eliminar as suas ocorrências.');db.ocorrencias=db.ocorrencias.filter(x=>x.id!==id)}
         save();return send(res,200,{ok:1})}}
     if(col==='users'){
@@ -72,5 +80,5 @@ http.createServer(async(req,res)=>{
     err(404,'Rota não encontrada.');
   }catch(e){console.error(e);err(500,'Erro no servidor.')}
 }).listen(PORT,'0.0.0.0',()=>{
-  console.log(`\nCaderneta v2 a funcionar!\n  Neste PC:      http://localhost:${PORT}`);
+  console.log(`\nCaderneta v3 a funcionar!\n  Neste PC:      http://localhost:${PORT}`);
   for(const l of Object.values(os.networkInterfaces()))for(const i of l)if(i.family==='IPv4'&&!i.internal)console.log(`  Outros aparelhos (mesma rede): http://${i.address}:${PORT}`)});
