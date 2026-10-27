@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Caderneta</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef1f6;--paper:#fff;--ink:#1b2a4a;--mute:#5d6b86;--line:#d5dbe8;--red:#c8372d;--blue:#2c4a9a;--ok:#2e7d4f;--warn:#b7791f;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#12182a;--paper:#1b2338;--ink:#e6ebf7;--mute:#9aa7c4;--line:#2d3856;--red:#ef6a5f;--blue:#8fa8f0;--ok:#5cc38a;--warn:#e6b656}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#12182a;--paper:#1b2338;--ink:#e6ebf7;--mute:#9aa7c4;--line:#2d3856;--red:#ef6a5f;--blue:#8fa8f0;--ok:#5cc38a;--warn:#e6b656}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Source Sans 3",system-ui,sans-serif}
+h1,h2,h3{font-family:"Bricolage Grotesque",system-ui,sans-serif;margin:0;line-height:1.15}
+.wrap{max-width:900px;margin:0 auto;padding:16px}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0 16px}
+header.top h1{font-size:2rem;cursor:pointer}
+header.top h1 span{color:var(--red)}
+.sheet{background:var(--paper);border:1px solid var(--line);border-radius:6px;position:relative;padding:20px 20px 20px 56px;
+background-image:repeating-linear-gradient(transparent 0 31px,var(--line) 31px 32px);background-color:var(--paper)}
+.sheet::before{content:"";position:absolute;left:38px;top:0;bottom:0;width:2px;background:var(--red);opacity:.7}
+.plain{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:16px}
+button,.btn{font:inherit;font-weight:600;border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:6px;padding:8px 14px;cursor:pointer;min-height:40px}
+button.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+:root[data-theme="dark"] button.primary{color:#12182a}
+button.danger{color:var(--red);border-color:var(--red)}
+button.ghost{border-color:transparent;background:transparent;color:var(--blue)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--blue);outline-offset:1px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.bar input,.bar select{flex:1 1 180px}
+input,select,textarea{font:inherit;width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink)}
+textarea{min-height:80px;resize:vertical}
+label{display:block;font-weight:600;font-size:.9rem;margin-bottom:10px}
+label input,label select,label textarea{margin-top:4px;font-weight:400}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0 14px}
+.stu{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.stu:last-child{border-bottom:0}
+.stu b{font-family:"Bricolage Grotesque",sans-serif;font-size:1.1rem}
+.sub{color:var(--mute);font-size:.9rem}
+.tag{display:inline-block;border:1px solid currentColor;border-radius:999px;padding:0 10px;font-size:.8rem;font-weight:600}
+.t-Elogio{color:var(--ok)}.t-Leve{color:var(--warn)}.t-Média{color:var(--warn)}.t-Grave{color:var(--red)}.t-Informativa{color:var(--blue)}
+dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 16px;margin:0}
+dt{color:var(--mute)}dd{margin:0;overflow-wrap:anywhere}
+.occ{padding:12px 0;border-bottom:1px solid var(--line)}
+.occ:last-child{border-bottom:0}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.empty{padding:28px 8px;color:var(--mute);text-align:center}
+dialog{border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);width:min(640px,94vw);max-height:92vh;padding:20px}
+dialog::backdrop{background:rgba(10,15,30,.55)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:6px;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.on{opacity:1}
+@media (max-width:520px){.sheet{padding:16px 14px 16px 44px}.sheet::before{left:28px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1 onclick="go('list')">Cader<span>neta</span></h1>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="exportar()" title="Descarregar cópia de segurança">Exportar</button>
+      <button onclick="document.getElementById('imp').click()">Importar</button>
+      <input type="file" id="imp" accept=".json" hidden>
+    </div>
+  </header>
+  <main id="app"></main>
+</div>
+
+<dialog id="dlgAluno"><form id="fAluno" method="dialog" onsubmit="return false"></form></dialog>
+<dialog id="dlgOcc"><form id="fOcc" method="dialog" onsubmit="return false"></form></dialog>
+<div class="toast" id="toast"></div>
+
+<script>
+const KEY="caderneta_v1";
+let mem=null;
+let db={alunos:[],ocorrencias:[]};
+let view="list",sel=null,q="",fTurma="";
+const TIPOS=["Disciplinar","Pedagógica","Saúde","Falta","Atraso","Elogio","Outra"];
+const GRAV=["Informativa","Leve","Média","Grave","Elogio"];
+
+function load(){try{const r=localStorage.getItem(KEY);if(r){db=JSON.parse(r);return}}catch(e){}
+  if(mem)db=mem}
+function save(){mem=db;try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}}
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const $=id=>document.getElementById(id);
+function toast(m){const t=$("toast");t.textContent=m;t.classList.add("on");setTimeout(()=>t.classList.remove("on"),2200)}
+function fdate(d){if(!d)return"—";const [y,m,dd]=d.split("-");return `${dd}/${m}/${y}`}
+function idade(d){if(!d)return"";const n=new Date(),b=new Date(d);let a=n.getFullYear()-b.getFullYear();if(n<new Date(n.getFullYear(),b.getMonth(),b.getDate()))a--;return a+" anos"}
+function go(v,id){view=v;sel=id||null;render();window.scrollTo(0,0)}
+
+function render(){
+  const app=$("app");
+  if(view==="list"){
+    const turmas=[...new Set(db.alunos.map(a=>a.turma).filter(Boolean))].sort();
+    const lista=db.alunos.filter(a=>{
+      const t=(a.nome+" "+(a.processo||"")+" "+(a.encNome||"")).toLowerCase();
+      return t.includes(q.toLowerCase())&&(!fTurma||a.turma===fTurma)}).sort((a,b)=>a.nome.localeCompare(b.nome));
+    app.innerHTML=`
+    <div class="bar">
+      <input type="search" id="q" placeholder="Pesquisar por nome, nº de processo ou encarregado" value="${esc(q)}" aria-label="Pesquisar">
+      <select id="ft" aria-label="Filtrar por turma"><option value="">Todas as turmas</option>${turmas.map(t=>`<option ${t===fTurma?"selected":""}>${esc(t)}</option>`).join("")}</select>
+      <button class="primary" onclick="abrirAluno()">Novo aluno</button>
+    </div>
+    <div class="sheet">
+      <div class="sub" style="margin-bottom:8px">${lista.length} de ${db.alunos.length} aluno(s)</div>
+      ${lista.length?lista.map(a=>{const n=db.ocorrencias.filter(o=>o.alunoId===a.id).length;return `
+        <div class="stu" onclick="go('detail','${a.id}')" tabindex="0" onkeydown="if(event.key==='Enter')go('detail','${a.id}')">
+          <div><b>${esc(a.nome)}</b><div class="sub">${esc(a.classe||"")} ${esc(a.turma||"")} · Proc. ${esc(a.processo||"—")}</div></div>
+          <span class="tag t-Informativa">${n} ocorrência${n===1?"":"s"}</span>
+        </div>`}).join(""):`<div class="empty">${db.alunos.length?"Nenhum aluno encontrado com esse filtro.":"Ainda não há alunos. Toque em “Novo aluno” para registar o primeiro."}</div>`}
+    </div>`;
+    $("q").oninput=e=>{q=e.target.value;const p=e.target.selectionStart;render();const i=$("q");i.focus();i.setSelectionRange(p,p)};
+    $("ft").onchange=e=>{fTurma=e.target.value;render()};
+  } else {
+    const a=db.alunos.find(x=>x.id===sel);
+    if(!a){go("list");return}
+    const occ=db.ocorrencias.filter(o=>o.alunoId===a.id).sort((x,y)=>y.data.localeCompare(x.data));
+    app.innerHTML=`
+    <div class="bar"><button class="ghost" onclick="go('list')">← Voltar à lista</button></div>
+    <div class="sheet">
+      <div class="row"><div><h2>${esc(a.nome)}</h2><div class="sub">${esc(a.classe||"")} ${esc(a.turma||"")} ${a.turno?"· "+esc(a.turno):""} · Ano letivo ${esc(a.anoLetivo||"—")}</div></div>
+      <div style="display:flex;gap:8px"><button onclick="abrirAluno('${a.id}')">Editar</button><button class="danger" onclick="apagarAluno('${a.id}')">Eliminar</button></div></div>
+      <h3 style="margin:20px 0 8px">Dados do aluno</h3>
+      <dl>
+        <dt>Nº de processo</dt><dd>${esc(a.processo||"—")}</dd>
+        <dt>Nascimento</dt><dd>${fdate(a.nascimento)} ${a.nascimento?"("+idade(a.nascimento)+")":""}</dd>
+        <dt>Género</dt><dd>${esc(a.genero||"—")}</dd>
+        <dt>Morada</dt><dd>${esc(a.morada||"—")}</dd>
+        <dt>Contacto</dt><dd>${esc(a.contacto||"—")}</dd>
+        <dt>Observações</dt><dd>${esc(a.obs||"—")}</dd>
+      </dl>
+      <h3 style="margin:20px 0 8px">Encarregado de educação</h3>
+      <dl>
+        <dt>Nome</dt><dd>${esc(a.encNome||"—")}</dd>
+        <dt>Parentesco</dt><dd>${esc(a.encParentesco||"—")}</dd>
+        <dt>Telefone</dt><dd>${a.encTel?`<a href="tel:${esc(a.encTel)}">${esc(a.encTel)}</a>`:"—"}</dd>
+        <dt>Telefone alternativo</dt><dd>${esc(a.encTel2||"—")}</dd>
+        <dt>Email</dt><dd>${esc(a.encEmail||"—")}</dd>
+        <dt>Profissão</dt><dd>${esc(a.encProf||"—")}</dd>
+      </dl>
+    </div>
+    <div class="sheet" style="margin-top:16px">
+      <div class="row"><h3>Ocorrências (${occ.length})</h3><button class="primary" onclick="abrirOcc('${a.id}')">Nova ocorrência</button></div>
+      ${occ.length?occ.map(o=>`<div class="occ">
+        <div class="row"><div><span class="tag t-${esc(o.gravidade)}">${esc(o.gravidade)}</span> <b>${esc(o.tipo)}</b> <span class="sub">· ${fdate(o.data)}</span></div>
+        <div><button class="ghost" onclick="abrirOcc('${a.id}','${o.id}')">Editar</button><button class="ghost" style="color:var(--red)" onclick="apagarOcc('${o.id}')">Eliminar</button></div></div>
+        <div>${esc(o.descricao)}</div>
+        ${o.medida?`<div class="sub"><b>Medida tomada:</b> ${esc(o.medida)}</div>`:""}
+        ${o.registadoPor?`<div class="sub">Registado por: ${esc(o.registadoPor)}</div>`:""}
+      </div>`).join(""):`<div class="empty">Sem ocorrências registadas para este aluno.</div>`}
+    </div>`;
+  }
+}
+
+/* ---- Alunos ---- */
+const inp=(n,l,v,t="text",x="")=>`<label>${l}<input name="${n}" type="${t}" value="${esc(v)}" ${x}></label>`;
+function abrirAluno(id){
+  const a=db.alunos.find(x=>x.id===id)||{};
+  $("fAluno").innerHTML=`<h2 style="margin-bottom:14px">${id?"Editar aluno":"Novo aluno"}</h2>
+  <h3 style="font-size:1rem;margin-bottom:8px">Dados do aluno</h3>
+  <div class="grid">
+    ${inp("nome","Nome completo *",a.nome||"","text","required")}
+    ${inp("processo","Nº de processo",a.processo||"")}
+    ${inp("nascimento","Data de nascimento",a.nascimento||"","date")}
+    <label>Género<select name="genero"><option value="">—</option>${["Feminino","Masculino"].map(g=>`<option ${a.genero===g?"selected":""}>${g}</option>`).join("")}</select></label>
+    ${inp("classe","Classe / Ano",a.classe||"")}
+    ${inp("turma","Turma",a.turma||"")}
+    <label>Turno<select name="turno"><option value="">—</option>${["Manhã","Tarde","Noite"].map(g=>`<option ${a.turno===g?"selected":""}>${g}</option>`).join("")}</select></label>
+    ${inp("anoLetivo","Ano letivo",a.anoLetivo||new Date().getFullYear())}
+    ${inp("contacto","Contacto do aluno",a.contacto||"","tel")}
+    ${inp("morada","Morada",a.morada||"")}
+  </div>
+  <label>Observações<textarea name="obs">${esc(a.obs||"")}</textarea></label>
+  <h3 style="font-size:1rem;margin:8px 0">Encarregado de educação</h3>
+  <div class="grid">
+    ${inp("encNome","Nome",a.encNome||"")}
+    ${inp("encParentesco","Parentesco",a.encParentesco||"")}
+    ${inp("encTel","Telefone",a.encTel||"","tel")}
+    ${inp("encTel2","Telefone alternativo",a.encTel2||"","tel")}
+    ${inp("encEmail","Email",a.encEmail||"","email")}
+    ${inp("encProf","Profissão",a.encProf||"")}
+  </div>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+    <button type="button" onclick="$('dlgAluno').close()">Cancelar</button><button class="primary" type="button" onclick="guardarAluno('${id||""}')">Guardar aluno</button></div>`;
+  $("dlgAluno").showModal();
+}
+function guardarAluno(id){
+  const f=$("fAluno");if(!f.reportValidity())return;
+  const d=Object.fromEntries(new FormData(f));d.nome=d.nome.trim();
+  if(id){Object.assign(db.alunos.find(x=>x.id===id),d)}else{d.id=uid();d.criado=new Date().toISOString();db.alunos.push(d);sel=d.id}
+  save();$("dlgAluno").close();toast("Aluno guardado");if(!id)go("detail",sel);else render();
+}
+function apagarAluno(id){
+  const a=db.alunos.find(x=>x.id===id);
+  if(!confirm(`Eliminar ${a.nome} e todas as suas ocorrências? Esta ação não pode ser desfeita.`))return;
+  db.alunos=db.alunos.filter(x=>x.id!==id);db.ocorrencias=db.ocorrencias.filter(o=>o.alunoId!==id);
+  save();toast("Aluno eliminado");go("list");
+}
+
+/* ---- Ocorrências ---- */
+function abrirOcc(alunoId,id){
+  const o=db.ocorrencias.find(x=>x.id===id)||{};
+  const sl=(n,l,arr,v)=>`<label>${l}<select name="${n}">${arr.map(x=>`<option ${x===v?"selected":""}>${x}</option>`).join("")}</select></label>`;
+  $("fOcc").innerHTML=`<h2 style="margin-bottom:14px">${id?"Editar ocorrência":"Nova ocorrência"}</h2>
+  <div class="grid">
+    ${inp("data","Data *",o.data||new Date().toISOString().slice(0,10),"date","required")}
+    ${sl("tipo","Tipo",TIPOS,o.tipo||"Disciplinar")}
+    ${sl("gravidade","Gravidade",GRAV,o.gravidade||"Informativa")}
+    ${inp("registadoPor","Registado por",o.registadoPor||"")}
+  </div>
+  <label>Descrição *<textarea name="descricao" required>${esc(o.descricao||"")}</textarea></label>
+  <label>Medida tomada<textarea name="medida">${esc(o.medida||"")}</textarea></label>
+  <div style="display:flex;gap:8px;justify-content:flex-end">
+    <button type="button" onclick="$('dlgOcc').close()">Cancelar</button><button class="primary" type="button" onclick="guardarOcc('${alunoId}','${id||""}')">Guardar ocorrência</button></div>`;
+  $("dlgOcc").showModal();
+}
+function guardarOcc(alunoId,id){
+  const f=$("fOcc");if(!f.reportValidity())return;
+  const d=Object.fromEntries(new FormData(f));
+  if(id)Object.assign(db.ocorrencias.find(x=>x.id===id),d);else db.ocorrencias.push({...d,id:uid(),alunoId});
+  save();$("dlgOcc").close();toast("Ocorrência guardada");render();
+}
+function apagarOcc(id){if(!confirm("Eliminar esta ocorrência?"))return;db.ocorrencias=db.ocorrencias.filter(o=>o.id!==id);save();toast("Ocorrência eliminada");render()}
+
+/* ---- Backup ---- */
+function exportar(){
+  const b=new Blob([JSON.stringify(db,null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="caderneta-"+new Date().toISOString().slice(0,10)+".json";a.click();
+}
+$("imp").onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);
+    if(!Array.isArray(d.alunos)||!Array.isArray(d.ocorrencias))throw 0;
+    if(!confirm("Importar vai substituir os dados atuais. Continuar?"))return;
+    db=d;save();toast("Dados importados");go("list")}catch(_){toast("Ficheiro inválido")}};
+  r.readAsText(f);e.target.value="";
+};
+load();render();
+</script>
+</body>
+</html>
