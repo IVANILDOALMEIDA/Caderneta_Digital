@@ -1,29 +1,11 @@
-
-# Dependências Node.js
+# Dados reais: NUNCA publicar
+data/db.json
+data/db.json.tmp
+data/sessions.json
+data/fotos/*
+data/anexos/*
+!data/fotos/.keep
+!data/anexos/.keep
+backups/
 node_modules/
-
-# Variáveis de ambiente e credenciais
-.env
-.env.*
-!.env.example
-
-# Logs
-logs/
 *.log
-npm-debug.log*
-
-# Ficheiros gerados
-dist/
-build/
-coverage/
-
-# Cache
-.npm/
-
-# Editores
-.vscode/
-.idea/
-
-# Sistema operativo
-.DS_Store
-Thumbs.db

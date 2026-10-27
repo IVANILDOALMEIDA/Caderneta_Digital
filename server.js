@@ -7,14 +7,17 @@ const FOTOS=path.join(DIR,'data','fotos');fs.mkdirSync(FOTOS,{recursive:true});
 const ANEXOS=path.join(DIR,'data','anexos');fs.mkdirSync(ANEXOS,{recursive:true});
 const BK=path.join(DIR,'backups');fs.mkdirSync(BK,{recursive:true});
 if(fs.existsSync(FILE))db=JSON.parse(fs.readFileSync(FILE,'utf8'));
-for(const k of['turmas','presencas','log'])db[k]=db[k]||[];
+for(const k of['turmas','presencas','log','disciplinas','notas'])db[k]=db[k]||[];
+db.config=Object.assign({mac:1,pp:1,pt:1,max:20,min:10,maxNeg:2,casas:1},db.config||{});
 const save=()=>{fs.writeFileSync(FILE+'.tmp',JSON.stringify(db,null,1));fs.renameSync(FILE+'.tmp',FILE)};
 const uid=()=>crypto.randomBytes(6).toString('hex');
 const hash=(p,s=crypto.randomBytes(16).toString('hex'))=>s+':'+crypto.scryptSync(p,s,32).toString('hex');
 const check=(p,h)=>{const a=Buffer.from(hash(p,h.split(':')[0])),b=Buffer.from(h);return a.length===b.length&&crypto.timingSafeEqual(a,b)};
 const pub=u=>({id:u.id,nome:u.nome,user:u.user,role:u.role,mustChange:!!u.mustChange});
 const audit=(me,a,d)=>{db.log.push({t:new Date().toISOString(),u:me.nome,a,d});if(db.log.length>2000)db.log.splice(0,db.log.length-2000)};
-if(!db.users.length){db.users.push({id:uid(),nome:'Administrador',user:'admin',role:'admin',pass:hash('admin123'),mustChange:true});save();console.log('Utilizador inicial criado: admin / admin123')}
+if(!db.users.length){const pw=crypto.randomBytes(5).toString('hex');
+  db.users.push({id:uid(),nome:'Administrador',user:'admin',role:'admin',pass:hash(pw),mustChange:true});save();
+  console.log('\n=== PRIMEIRA EXECUÇÃO ===\nUtilizador: admin\nPalavra-passe provisória: '+pw+'\n(Anote-a agora: só aparece desta vez. Será obrigado a trocá-la ao entrar.)\n')}
 const SF=path.join(DIR,'data','sessions.json');
 const sessions=new Map(fs.existsSync(SF)?JSON.parse(fs.readFileSync(SF,'utf8')):[]);
 const saveS=()=>fs.writeFileSync(SF,JSON.stringify([...sessions]));const fails=new Map();
@@ -31,7 +34,7 @@ function backup(){try{
   fs.copyFileSync(FILE,path.join(BK,'db-'+new Date().toISOString().slice(0,10)+'.json'));
   const l=fs.readdirSync(BK).filter(x=>x.startsWith('db-')).sort();while(l.length>30)fs.rmSync(path.join(BK,l.shift()));
   const lim=Date.now()-30*864e5,n=db.alunos.length;db.alunos=db.alunos.filter(a=>!a.eliminado||a.eliminado>lim);
-  if(db.alunos.length!==n){const ids=new Set(db.alunos.map(a=>a.id));db.ocorrencias=db.ocorrencias.filter(o=>ids.has(o.alunoId));db.presencas=db.presencas.filter(p=>ids.has(p.alunoId));save()}
+  if(db.alunos.length!==n){const ids=new Set(db.alunos.map(a=>a.id));db.ocorrencias=db.ocorrencias.filter(o=>ids.has(o.alunoId));db.presencas=db.presencas.filter(p=>ids.has(p.alunoId));db.notas=db.notas.filter(n=>ids.has(n.alunoId));save()}
 }catch(e){console.error('backup:',e.message)}}
 backup();setInterval(backup,6*36e5);
 http.createServer(async(req,res)=>{
@@ -55,11 +58,31 @@ http.createServer(async(req,res)=>{
     if(col==='me')return send(res,200,pub(me));
     if(col==='logout'){sessions.delete(sid);saveS();return send(res,200,{ok:1})}
     if(col==='data'){const at=db.alunos.filter(a=>!a.eliminado),ids=new Set(at.map(a=>a.id));
-      return send(res,200,{alunos:at,ocorrencias:db.ocorrencias.filter(o=>ids.has(o.alunoId)),turmas:db.turmas,presencas:db.presencas.filter(p=>ids.has(p.alunoId))})}
+      return send(res,200,{alunos:at,ocorrencias:db.ocorrencias.filter(o=>ids.has(o.alunoId)),turmas:db.turmas,presencas:db.presencas.filter(p=>ids.has(p.alunoId)),disciplinas:db.disciplinas,notas:db.notas.filter(n=>ids.has(n.alunoId)),config:db.config})}
     if(col==='password'&&m==='POST'){
       if(!check(String(b.atual||''),me.pass))return err(400,'A palavra-passe atual está errada.');
       if(String(b.nova||'').length<6)return err(400,'A nova palavra-passe deve ter pelo menos 6 caracteres.');
       me.pass=hash(b.nova);me.mustChange=false;save();return send(res,200,{ok:1})}
+    if(col==='config'&&m==='PUT'){if(!need())return;const c={};
+      for(const k of['mac','pp','pt','max','min','maxNeg','casas']){const v=Number(b[k]);if(b[k]===''||!isFinite(v)||v<0)return err(400,'Valor inválido em "'+k+'".');c[k]=v}
+      if(c.mac+c.pp+c.pt<=0)return err(400,'Pelo menos um peso deve ser maior que zero.');if(c.min>c.max)return err(400,'A nota mínima não pode ser maior que a escala.');
+      db.config=c;audit(me,'alterou','regras de avaliação');save();return send(res,200,c)}
+    if(col==='disciplinas'){if(!need())return;
+      if(m==='DELETE'){db.disciplinas=db.disciplinas.filter(x=>x.id!==id);db.notas=db.notas.filter(n=>n.disciplinaId!==id);audit(me,'eliminou','disciplina');save();return send(res,200,{ok:1})}
+      const nome=String(b.nome||'').trim();if(!nome)return err(400,'Indique o nome da disciplina.');
+      const d={nome,classe:String(b.classe||'').trim(),professores:(Array.isArray(b.professores)?b.professores:[]).filter(x=>db.users.some(u=>u.id===x))};
+      if(m==='POST')db.disciplinas.push({id:uid(),...d});else{const x=db.disciplinas.find(x=>x.id===id);if(!x)return err(404,'Não encontrada.');Object.assign(x,d)}
+      audit(me,m==='POST'?'criou':'editou','disciplina: '+nome);save();return send(res,200,{ok:1})}
+    if(col==='notas'&&m==='POST'){
+      const{disciplinaId,turma,trimestre,linhas}=b,d=db.disciplinas.find(x=>x.id===disciplinaId),t=Number(trimestre);
+      if(!d||![1,2,3].includes(t)||!linhas||typeof linhas!=='object')return err(400,'Dados inválidos.');
+      if(!admin&&!(d.professores||[]).includes(me.id))return err(403,'Não está atribuído a esta disciplina.');
+      const ids=new Set(db.alunos.filter(a=>!a.eliminado&&a.turma===turma).map(a=>a.id)),max=db.config.max,ups=[];
+      for(const[aid,l]of Object.entries(linhas)){if(!ids.has(aid))continue;const n={};
+        for(const k of['mac','pp','pt']){const raw=l[k];if(raw===''||raw==null){n[k]=null;continue}const v=Number(raw);if(!isFinite(v)||v<0||v>max)return err(400,'A nota deve estar entre 0 e '+max+'.');n[k]=v}ups.push([aid,n])}
+      for(const[aid,n]of ups){let r=db.notas.find(x=>x.alunoId===aid&&x.disciplinaId===disciplinaId&&x.trimestre===t);
+        if(!r){r={id:uid(),alunoId:aid,disciplinaId,trimestre:t};db.notas.push(r)}Object.assign(r,n,{por:me.id})}
+      audit(me,'lançou','notas '+d.nome+' '+turma+' T'+t);save();return send(res,200,{ok:1})}
     if(col==='turmas'&&m==='POST'){if(!need())return;if(!String(b.nome||'').trim())return err(400,'Indique o nome da turma.');
       if(db.turmas.some(t=>t.nome===b.nome.trim()))return err(400,'Essa turma já existe.');
       db.turmas.push({id:uid(),nome:b.nome.trim(),ano:b.ano||'',diretor:b.diretor||''});audit(me,'criou','turma: '+b.nome);save();return send(res,200,{ok:1})}
@@ -114,9 +137,9 @@ http.createServer(async(req,res)=>{
       if(m==='PUT'){if(b.pass){if(String(b.pass).length<6)return err(400,'Mín. 6 caracteres.');u.pass=hash(b.pass);u.mustChange=true}save();return send(res,200,{ok:1})}
       if(m==='DELETE'){if(u.id===me.id)return err(400,'Não pode eliminar a sua própria conta.');
         db.users=db.users.filter(x=>x.id!==id);for(const[t,i]of sessions)if(i===id)sessions.delete(t);saveS();save();return send(res,200,{ok:1})}}
-    if(col==='import'&&m==='POST'){if(!need())return;db.alunos=b.alunos||[];db.ocorrencias=b.ocorrencias||[];if(b.turmas)db.turmas=b.turmas;if(b.presencas)db.presencas=b.presencas;audit(me,'importou','dados');save();return send(res,200,{ok:1})}
+    if(col==='import'&&m==='POST'){if(!need())return;db.alunos=b.alunos||[];db.ocorrencias=b.ocorrencias||[];if(b.turmas)db.turmas=b.turmas;if(b.presencas)db.presencas=b.presencas;if(b.disciplinas)db.disciplinas=b.disciplinas;if(b.notas)db.notas=b.notas;if(b.config)db.config=b.config;audit(me,'importou','dados');save();return send(res,200,{ok:1})}
     err(404,'Rota não encontrada.');
   }catch(e){console.error(e);err(500,'Erro no servidor.')}
 }).listen(PORT,'0.0.0.0',()=>{
-  console.log(`\nCaderneta v5 a funcionar!\n  Neste PC:      http://localhost:${PORT}`);
+  console.log(`\nCaderneta Digital v6.4 a funcionar!\n  Neste PC:      http://localhost:${PORT}`);
   for(const l of Object.values(os.networkInterfaces()))for(const i of l)if(i.family==='IPv4'&&!i.internal)console.log(`  Outros aparelhos (mesma rede): http://${i.address}:${PORT}`)});
